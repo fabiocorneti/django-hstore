@@ -2,6 +2,7 @@ import sys
 
 import django
 from django.conf import settings
+from django.db import connections
 from django.db.backends.signals import connection_created
 
 try:
@@ -68,6 +69,9 @@ def register_hstore_handler(connection, **kwargs):
     # do not register hstore if DB is not postgres
     # do not register if HAS_HSTORE flag is set to false
 
+    if connection.connection is None:
+        return
+    
     if connection.vendor != 'postgresql' or \
        connection.settings_dict.get('HAS_HSTORE', True) is False:
         return
@@ -85,8 +89,12 @@ def register_hstore_handler(connection, **kwargs):
         register_hstore(connection.connection, globally=HSTORE_REGISTER_GLOBALLY)
 
 
+for connection in connections.all():
+    register_hstore_handler(connection, vendor="postgresql")
+
 connection_handler.attach_handler(register_hstore_handler,
-                                  vendor="postgresql", unique=HSTORE_REGISTER_GLOBALLY)
+                                  vendor="postgresql",
+                                  unique=HSTORE_REGISTER_GLOBALLY)
 
 
 class HStoreConfig(AppConfig):
